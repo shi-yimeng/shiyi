@@ -47,11 +47,17 @@ package-lock.json
 **/application-local.yml
 .env
 .env.*
+# Docker 部署：真实 Nginx 站点配置（复制 template 后改名的）不要提交
+docker/nginx/sites-enabled/*.conf
+docker/nginx/sites-enabled/*
+!docker/nginx/sites-enabled/*.template
+
 *.p12
 *.jks
 *.keystore
 
 # ========== 以下文件 **必须** 提交（模板/基础配置/构建说明，clone下来立刻能用） ==========
+!.env.example
 !**/application.yml
 !**/application.yml.template
 !**/application-dev.yml.template

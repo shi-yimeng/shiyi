@@ -1,16 +1,13 @@
 -- Shiyi个人网站数据库
--- 包含四个网站的后端数据库
--- 主页home.zhaoxinyi.fun
--- 管理admin.zhaoxinyi.fun
--- 简历cv.zhaoxinyi.fun
--- 博客blog.zhaoxinyi.fun
+-- 包含个人主页（已整合进博客端Frontend-Blog的/home路由）、管理后台、简历、博客四个子站
+-- 主站home.example.com / 管理admin.example.com / 简历cv.example.com / 博客blog.example.com
 
-drop database if exists Shiyi;
-create database Shiyi;
+drop database if exists shiyi;
+create database shiyi character set utf8mb4 collate utf8mb4_unicode_ci;
 
-use Shiyi;
+use shiyi;
 
--- ===========管理端(admin.zhaoxinyi.fun)相关表====================
+-- ===========管理端(admin.example.com)相关表====================
 -- 管理员表
 create table admin(
     id int primary key auto_increment,
@@ -51,7 +48,7 @@ create table system_config(
 ) comment '系统配置表';
 -- ==========================================================
 
--- ================主页(home.zhaoxinyi.fun)相关表================
+-- ================主页(home.example.com)相关表================
 -- 个人信息表
 create table personal_info(
     id int primary key auto_increment,
@@ -81,7 +78,7 @@ create table social_media(
 -- ==========================================================
 
 
--- ====================简历(cv.zhaoxinyi.fun)相关表===============
+-- ====================简历(cv.example.com)相关表===============
 -- 经历表
 create table experiences(
     id int primary key auto_increment,
@@ -116,7 +113,7 @@ create table skills(
 ) comment '技能表';
 -- ==========================================================
 
--- ================博客(blog.zhaoxinyi.fun)相关表=================
+-- ================博客(blog.example.com)相关表=================
 -- 访客表
 create table visitors(
     id int primary key auto_increment comment '访客ID',

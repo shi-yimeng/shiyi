@@ -362,7 +362,7 @@ server {
 | 项 | 建议 |
 |---|---|
 | `JWT_SECRET` 环境变量 | 用随机 32+ 字符串覆盖默认密钥（`export JWT_SECRET=xxxx` 或 systemd Environment）|
-| 数据库账号密码 | 不要用默认 `shiyi / Shiyi_2026!Db` |
+| 数据库账号密码 | 不要用默认 `shiyi / changeme` 或 `shiyi / shiyi123` 这类弱密码，必须用大小写+数字+符号混合至少12位 |
 | Redis 密码 | 给 Redis 设置 `requirepass` |
 | 防火墙 / 安全组 | 只放行 22 / 80 / 443；数据库/Redis 不对外暴露 |
 

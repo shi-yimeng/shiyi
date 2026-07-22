@@ -1,9 +1,9 @@
-# 主站: zhaoxinyi.fun
+# 主站: example.com
 server {
     listen 80;
-    server_name zhaoxinyi.fun;
+    server_name example.com;
 
-    root /var/www/zhaoxinyi.fun/html;
+    root /var/www/example.com/html;
     index index.html;
 
     # 前端静态文件
@@ -31,12 +31,12 @@ server {
     }
 }
 
-# 博客站: blog.zhaoxinyi.fun
+# 博客站: blog.example.com（内含个人信息/home路由，无须单独主站）
 server {
     listen 80;
-    server_name blog.zhaoxinyi.fun;
+    server_name blog.example.com;
 
-    root /var/www/blog.zhaoxinyi.fun/html;
+    root /var/www/blog.example.com/html;
     index index.html;
 
     location / {
@@ -77,12 +77,12 @@ server {
     }
 }
 
-# 简历站: cv.zhaoxinyi.fun
+# 简历站: cv.example.com
 server {
     listen 80;
-    server_name cv.zhaoxinyi.fun;
+    server_name cv.example.com;
 
-    root /var/www/cv.zhaoxinyi.fun/html;
+    root /var/www/cv.example.com/html;
     index index.html;
 
     location / {
@@ -107,12 +107,12 @@ server {
     }
 }
 
-# 管理后台: admin.zhaoxinyi.fun
+# 管理后台: admin.example.com
 server {
     listen 80;
-    server_name admin.zhaoxinyi.fun;
+    server_name admin.example.com;
 
-    root /var/www/admin.zhaoxinyi.fun/html;
+    root /var/www/admin.example.com/html;
     index index.html;
 
     location / {
