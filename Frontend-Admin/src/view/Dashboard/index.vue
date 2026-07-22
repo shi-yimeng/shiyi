@@ -1,0 +1,581 @@
+<script setup>
+import { ref, onMounted, shallowRef, watch } from 'vue'
+import { useUserStore } from '@/stores'
+import {
+  getOverview,
+  getViewStatistics,
+  getVisitorStatistics,
+  getArticleViewTop10,
+  getProvinceDistribution
+} from '@/api/report'
+import { getConfigByKey } from '@/api/settings'
+import * as echarts from 'echarts/core'
+import { LineChart, BarChart, PieChart } from 'echarts/charts'
+import {
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  LegendComponent
+} from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+import dayjs from 'dayjs'
+
+echarts.use([
+  LineChart,
+  BarChart,
+  PieChart,
+  TitleComponent,
+  TooltipComponent,
+  GridComponent,
+  LegendComponent,
+  CanvasRenderer
+])
+
+const userStore = useUserStore()
+
+/* ---- 概览数据 ---- */
+const overview = ref({})
+const loadingOverview = ref(false)
+
+const statCards = [
+  { key: 'totalViewCount', label: '总浏览量', icon: 'icon-eye' },
+  { key: 'totalVisitorCount', label: '总访客数', icon: 'icon-user' },
+  { key: 'todayViewCount', label: '今日浏览', icon: 'icon-today' },
+  { key: 'todayNewVisitorCount', label: '今日新访客', icon: 'icon-new' },
+  {
+    key: 'totalArticleCount',
+    label: '文章总数',
+    icon: 'icon-bianjiwenzhang_huaban'
+  },
+  { key: 'totalCommentCount', label: '评论总数', icon: 'icon-comment' },
+  { key: 'totalMessageCount', label: '留言总数', icon: 'icon-liuyanban-05' },
+  { key: 'pendingCommentCount', label: '待审评论', icon: 'icon-shenhe' },
+  { key: 'pendingMessageCount', label: '待审留言', icon: 'icon-shenhe1' }
+]
+
+const fetchOverview = async () => {
+  loadingOverview.value = true
+  try {
+    const res = await getOverview()
+    overview.value = res.data ?? {}
+  } finally {
+    loadingOverview.value = false
+  }
+}
+
+/* ---- 运行天数 ---- */
+const runDays = ref(null)
+const runStartDate = ref('')
+
+const fetchRunDays = async () => {
+  try {
+    const res = await getConfigByKey('start-time')
+    const dateStr = res.data?.configValue ?? ''
+    if (dateStr) {
+      runStartDate.value = dateStr
+      const start = dayjs(dateStr)
+      runDays.value = dayjs().diff(start, 'day')
+    }
+  } catch (e) {
+    console.error('获取运行天数失败', e)
+  }
+}
+
+/* ---- 折线图配置 ---- */
+const viewChartEl = ref(null)
+const visitorChartEl = ref(null)
+const barChartEl = ref(null)
+const pieChartEl = ref(null)
+const viewChart = shallowRef(null)
+const visitorChart = shallowRef(null)
+const barChart = shallowRef(null)
+const pieChart = shallowRef(null)
+
+const makeShortcuts = () => [
+  {
+    text: '最近 7 天',
+    value: () => [dayjs().subtract(6, 'day').toDate(), new Date()]
+  },
+  {
+    text: '最近 30 天',
+    value: () => [dayjs().subtract(29, 'day').toDate(), new Date()]
+  }
+]
+
+const defaultRange = () => [
+  dayjs().subtract(6, 'day').format('YYYY-MM-DD'),
+  dayjs().format('YYYY-MM-DD')
+]
+
+const viewDateRange = ref(defaultRange())
+const visitorDateRange = ref(defaultRange())
+
+const makeLineOption = (title, categories, data, color) => ({
+  tooltip: { trigger: 'axis' },
+  grid: { left: 40, right: 20, top: 30, bottom: 30 },
+  xAxis: {
+    type: 'category',
+    data: categories,
+    axisLine: { lineStyle: { color: '#e4e7ed' } },
+    axisLabel: { color: '#909399', fontSize: 12 }
+  },
+  yAxis: {
+    type: 'value',
+    splitLine: { lineStyle: { color: '#f0f0f0' } },
+    axisLabel: { color: '#909399', fontSize: 12 }
+  },
+  series: [
+    {
+      name: title,
+      type: 'line',
+      data,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 5,
+      lineStyle: { color, width: 2 },
+      itemStyle: { color },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [
+            { offset: 0, color: color + '33' },
+            { offset: 1, color: color + '00' }
+          ]
+        }
+      }
+    }
+  ]
+})
+
+/* 浏览量折线图（独立日期） */
+const splitStr = (s) => (s ? s.split(',') : [])
+const splitNum = (s) => (s ? s.split(',').map(Number) : [])
+
+const fetchViewChart = async () => {
+  const [begin, end] = viewDateRange.value
+  const res = await getViewStatistics({ begin, end })
+  const vo = res.data ?? {}
+  viewChart.value?.setOption(
+    makeLineOption(
+      '浏览量',
+      splitStr(vo.dateList),
+      splitNum(vo.viewCountList),
+      '#000000'
+    )
+  )
+}
+
+/* 访客折线图（独立日期） */
+const fetchVisitorChart = async () => {
+  const [begin, end] = visitorDateRange.value
+  const res = await getVisitorStatistics({ begin, end })
+  const vo = res.data ?? {}
+  visitorChart.value?.setOption(
+    makeLineOption(
+      '访客数',
+      splitStr(vo.dateList),
+      splitNum(vo.newVisitorCountList),
+      '#606266'
+    )
+  )
+}
+
+/* 文章阅读量 TOP10 柱状图 */
+const fetchBarChart = async () => {
+  const res = await getArticleViewTop10()
+  const vo = res.data ?? {}
+  const titles = (vo.titleList ?? []).slice(0, 10).reverse()
+  const counts = (vo.viewCountList ?? []).slice(0, 10).reverse()
+  barChart.value?.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 130, right: 20, top: 16, bottom: 24 },
+    xAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#f0f0f0' } },
+      axisLabel: { color: '#909399', fontSize: 11 }
+    },
+    yAxis: {
+      type: 'category',
+      data: titles.map((t) => (t && t.length > 14 ? t.slice(0, 14) + '…' : t)),
+      axisLabel: { color: '#606266', fontSize: 12 },
+      axisLine: { lineStyle: { color: '#e4e7ed' } }
+    },
+    series: [
+      {
+        name: '阅读量',
+        type: 'bar',
+        data: counts,
+        barMaxWidth: 20,
+        itemStyle: { color: '#303133', borderRadius: [0, 4, 4, 0] }
+      }
+    ]
+  })
+}
+
+/* 访客省份饼图 */
+const fetchPieChart = async () => {
+  const res = await getProvinceDistribution()
+  const vo = res.data ?? {}
+  const provinces = splitStr(vo.provinceList)
+  const counts = splitNum(vo.countList)
+  const pieData = provinces.map((name, i) => ({
+    name: name || '未知',
+    value: counts[i] ?? 0
+  }))
+  pieChart.value?.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    color: [
+      '#303133',
+      '#606266',
+      '#909399',
+      '#A8ABB2',
+      '#C0C4CC',
+      '#D4D7DE',
+      '#DCDFE6',
+      '#E4E7ED',
+      '#EBEEF5',
+      '#F2F6FC'
+    ],
+    legend: {
+      orient: 'vertical',
+      right: 10,
+      top: 'center',
+      textStyle: { color: '#606266', fontSize: 12 },
+      icon: 'circle'
+    },
+    series: [
+      {
+        name: '访客省份',
+        type: 'pie',
+        radius: ['40%', '68%'],
+        center: ['38%', '50%'],
+        avoidLabelOverlap: true,
+        label: { show: false },
+        labelLine: { show: false },
+        data: pieData,
+        itemStyle: { borderColor: '#fff', borderWidth: 2 }
+      }
+    ]
+  })
+}
+
+const initCharts = () => {
+  viewChart.value = echarts.init(viewChartEl.value)
+  visitorChart.value = echarts.init(visitorChartEl.value)
+  barChart.value = echarts.init(barChartEl.value)
+  pieChart.value = echarts.init(pieChartEl.value)
+  fetchViewChart()
+  fetchVisitorChart()
+  fetchBarChart()
+  fetchPieChart()
+}
+
+const loadDashboard = () => {
+  fetchOverview()
+  fetchRunDays()
+  initCharts()
+}
+
+onMounted(() => {
+  // 用户信息已加载 → 直接判断
+  if (userStore.userInfo?.id) {
+    if (!userStore.isGuest) loadDashboard()
+    return
+  }
+  // 页面刷新后 userInfo 尚未加载 → 等待加载完成再判断
+  const stop = watch(
+    () => userStore.userInfo,
+    (info) => {
+      if (info?.id) {
+        stop()
+        if (!userStore.isGuest) loadDashboard()
+      }
+    }
+  )
+})
+</script>
+
+<template>
+  <div class="dashboard">
+    <!-- 游客/加载中：骨架屏 -->
+    <template v-if="userStore.isGuest || !userStore.userInfo?.id">
+      <div class="stat-grid">
+        <div v-for="i in 9" :key="i" class="stat-card">
+          <div class="sk-stat-icon" />
+          <div class="stat-info">
+            <div class="sk-line sk-val" />
+            <div class="sk-line sk-lbl" />
+          </div>
+        </div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card" v-for="i in 4" :key="i">
+          <div class="chart-header">
+            <div class="sk-line sk-title" />
+          </div>
+          <div class="sk-chart-body" />
+        </div>
+      </div>
+    </template>
+
+    <!-- 管理员模式：真实数据 -->
+    <template v-else>
+      <!-- 概览卡片 -->
+      <div v-loading="loadingOverview" class="stat-grid">
+        <div v-for="card in statCards" :key="card.key" class="stat-card">
+          <div class="stat-icon">
+            <span :class="['iconfont', card.icon]" />
+          </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ overview[card.key] ?? '-' }}</div>
+            <div class="stat-label">{{ card.label }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 折线图 -->
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">浏览量趋势</span>
+            <el-date-picker
+              v-model="viewDateRange"
+              type="daterange"
+              value-format="YYYY-MM-DD"
+              range-separator="-"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              :shortcuts="makeShortcuts()"
+              size="small"
+              @change="fetchViewChart"
+            />
+          </div>
+          <div ref="viewChartEl" class="chart-body" />
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">访客数趋势</span>
+            <el-date-picker
+              v-model="visitorDateRange"
+              type="daterange"
+              value-format="YYYY-MM-DD"
+              range-separator="-"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              :shortcuts="makeShortcuts()"
+              size="small"
+              @change="fetchVisitorChart"
+            />
+          </div>
+          <div ref="visitorChartEl" class="chart-body" />
+        </div>
+      </div>
+
+      <!-- 柱状图 + 饼图 -->
+      <div class="chart-row">
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">阅读量 TOP 10</span>
+          </div>
+          <div ref="barChartEl" class="chart-body" />
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <span class="chart-title">访客省份分布</span>
+          </div>
+          <div ref="pieChartEl" class="chart-body" />
+        </div>
+      </div>
+
+      <!-- 网站运行时长 -->
+      <div v-if="runDays !== null" class="run-banner">
+        <div class="run-banner-inner">
+          <span class="run-icon iconfont icon-time" />
+          <span class="run-text">本站已稳定运行 </span>
+          <span class="run-days">{{ runDays }}</span>
+          <span class="run-unit">天</span>
+        </div>
+      </div>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: #ffffff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 20px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon .iconfont {
+  font-size: 22px;
+  color: #303133;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.run-banner {
+  background: #ffffff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 10px 28px;
+}
+
+.run-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.run-icon {
+  font-size: 20px;
+  color: #303133;
+  margin-right: 2px;
+}
+
+.run-text {
+  font-size: 15px;
+  color: #606266;
+}
+
+.run-days {
+  font-size: 20px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 1;
+  margin: 0 2px;
+}
+
+.run-unit {
+  font-size: 15px;
+  color: #606266;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .chart-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  background: #ffffff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chart-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.chart-body {
+  height: 260px;
+}
+
+/* 游客骨架屏 */
+@keyframes admin-sk-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.sk-line {
+  display: block;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ebeef5 25%, #f5f7fa 50%, #ebeef5 75%);
+  background-size: 200% 100%;
+  animation: admin-sk-shimmer 1.5s ease-in-out infinite;
+}
+.sk-stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #ebeef5 25%, #f5f7fa 50%, #ebeef5 75%);
+  background-size: 200% 100%;
+  animation: admin-sk-shimmer 1.5s ease-in-out infinite;
+}
+.sk-val {
+  width: 48px;
+  height: 22px;
+  margin-bottom: 6px;
+}
+.sk-lbl {
+  width: 60px;
+  height: 13px;
+}
+.sk-title {
+  width: 90px;
+  height: 16px;
+}
+.sk-chart-body {
+  height: 260px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #ebeef5 25%, #f5f7fa 50%, #ebeef5 75%);
+  background-size: 200% 100%;
+  animation: admin-sk-shimmer 1.5s ease-in-out infinite;
+}
+</style>

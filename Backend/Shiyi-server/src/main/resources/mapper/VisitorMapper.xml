@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cc.shiyi.mapper.VisitorMapper">
+
+    <insert id="insertVisitor" useGeneratedKeys="true" keyProperty="id">
+        insert into visitors (fingerprint, session_id, ip, user_agent, country, province, city, longitude, latitude,
+                              first_visit_time, last_visit_time, total_views, is_blocked, expires_at, create_time, update_time)
+        values (#{fingerprint}, #{sessionId}, #{ip}, #{userAgent}, #{country}, #{province}, #{city}, #{longitude}, #{latitude},
+                #{firstVisitTime}, #{lastVisitTime}, #{totalViews}, #{isBlocked}, #{expiresAt}, #{createTime}, #{updateTime})
+    </insert>
+    <update id="updateById">
+        update visitors
+        <set>
+            <if test="sessionId != null">session_id = #{sessionId},</if>
+            <if test="ip != null">ip = #{ip},</if>
+            <if test="userAgent != null">user_agent = #{userAgent},</if>
+            <if test="country != null">country = #{country},</if>
+            <if test="province != null">province = #{province},</if>
+            <if test="city != null">city = #{city},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="firstVisitTime != null">first_visit_time = #{firstVisitTime},</if>
+            <if test="lastVisitTime != null">last_visit_time = #{lastVisitTime},</if>
+            <if test="totalViews != null">total_views = #{totalViews},</if>
+            <if test="isBlocked != null">is_blocked = #{isBlocked},</if>
+            <if test="expiresAt != null">expires_at = #{expiresAt},</if>
+            <if test="updateTime != null">update_time = #{updateTime}</if>
+        </set>
+        where id = #{id}
+    </update>
+    <select id="pageQuery" resultType="cc.shiyi.entity.Visitors">
+        select * from visitors
+        <where>
+            <if test="country != null">and country like concat('%',#{country},'%')</if>
+            <if test="province != null">and province like concat('%',#{province},'%')</if>
+            <if test="city != null">and city like concat('%',#{city},'%')</if>
+            <if test="status != null">and is_blocked = #{status}</if>
+        </where>
+        order by last_visit_time desc
+    </select>
+
+    <update id="batchBlock">
+        update visitors
+        set is_blocked = 1, expires_at = date_add(now(), interval 1 day), update_time = now()
+        where id in
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="batchUnblock">
+        update visitors
+        set is_blocked = 0, expires_at = null, update_time = now()
+        where id in
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <select id="getDailyNewVisitorStats" resultType="cc.shiyi.dto.DailyVisitorCountDTO">
+        select date(create_time) as date, count(*) as count
+        from visitors
+        where date(create_time) between #{begin} and #{end}
+        group by date(create_time)
+        order by date
+    </select>
+
+    <select id="getProvinceDistribution" resultType="cc.shiyi.dto.ProvinceCountDTO">
+        select ifnull(province, '未知') as province, count(*) as count
+        from visitors
+        group by province
+        order by count desc
+        limit 10
+    </select>
+</mapper>

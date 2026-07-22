@@ -1,0 +1,86 @@
+package cc.shiyi.controller.blog;
+
+import cc.shiyi.annotation.RateLimit;
+import cc.shiyi.dto.MessageDTO;
+import cc.shiyi.dto.MessageEditDTO;
+import cc.shiyi.result.Result;
+import cc.shiyi.service.MessageService;
+import cc.shiyi.service.VisitorTokenService;
+import cc.shiyi.vo.MessageVO;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * 博客端留言接口
+ */
+@RestController("blogMessageController")
+@RequestMapping("/blog/message")
+@Slf4j
+public class MessageController {
+
+    @Autowired
+    private MessageService messageService;
+    @Autowired
+    private VisitorTokenService visitorTokenService;
+
+    /**
+     * 访客提交留言
+     * @param messageDTO
+     * @param request
+     * @return
+     */
+    @PostMapping
+    @RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8,
+              timeWindow = 60, message = "留言过于频繁，请稍后再试")
+    public Result<String> submitMessage(@Valid @RequestBody MessageDTO messageDTO, HttpServletRequest request) {
+        // 验证访客身份，覆盖DTO中的visitorId，防止伪造
+        Long visitorId = visitorTokenService.resolveVisitorId(request);
+        messageDTO.setVisitorId(visitorId);
+        log.info("访客提交留言: {}", messageDTO);
+        messageService.submitMessage(messageDTO, request);
+        return Result.success();
+    }
+
+    /**
+     * 获取留言列表（树形结构，含当前访客的未审核留言）
+     */
+    @GetMapping
+    public Result<List<MessageVO>> getMessageTree(@RequestParam(required = false) Long visitorId) {
+        log.info("博客端获取留言树: visitorId={}", visitorId);
+        List<MessageVO> messageTree = messageService.getMessageTree(visitorId);
+        return Result.success(messageTree);
+    }
+
+    /**
+     * 访客编辑留言
+     */
+    @PutMapping("/edit")
+    @RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8,
+              timeWindow = 60, message = "操作过于频繁，请稍后再试")
+    public Result<String> editMessage(@Valid @RequestBody MessageEditDTO editDTO,
+                                      HttpServletRequest request) {
+        Long visitorId = visitorTokenService.resolveVisitorId(request);
+        editDTO.setVisitorId(visitorId);
+        log.info("访客编辑留言: {}", editDTO);
+        messageService.editMessage(editDTO);
+        return Result.success();
+    }
+
+    /**
+     * 访客删除留言
+     */
+    @DeleteMapping("/{id}")
+    @RateLimit(type = RateLimit.Type.IP, tokens = 5, burstCapacity = 8,
+              timeWindow = 60, message = "操作过于频繁，请稍后再试")
+    public Result<String> deleteMessage(@PathVariable Long id, HttpServletRequest request) {
+        Long visitorId = visitorTokenService.resolveVisitorId(request);
+        log.info("访客删除留言: id={}, visitorId={}", id, visitorId);
+        messageService.visitorDeleteMessage(id, visitorId);
+        return Result.success();
+    }
+}

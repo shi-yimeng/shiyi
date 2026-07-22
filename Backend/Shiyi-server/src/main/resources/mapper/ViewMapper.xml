@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cc.shiyi.mapper.ViewMapper">
+
+    <insert id="insert">
+        insert into views (visitor_id, page_path, referer,page_title, ip_address, user_agent, view_time)
+        values (#{visitorId}, #{pagePath}, #{referer},#{pageTitle}, #{ipAddress}, #{userAgent}, #{viewTime})
+    </insert>
+
+    <select id="pageQuery" resultType="cc.shiyi.entity.Views">
+        select * from views
+        <where>
+            <if test="pagePath != null and pagePath != ''">
+                and page_path like concat('%', #{pagePath}, '%')
+            </if>
+            <if test="referer != null and referer != ''">
+                and referer like concat('%', #{referer}, '%')
+            </if>
+            <if test="visitorId != null">
+                and visitor_id = #{visitorId}
+            </if>
+        </where>
+        order by view_time desc
+    </select>
+
+    <select id="getDailyViewStats" resultType="cc.shiyi.dto.DailyViewCountDTO">
+        select date(view_time) as date, count(*) as count
+        from views
+        where date(view_time) between #{begin} and #{end}
+        group by date(view_time)
+        order by date
+    </select>
+
+    <delete id="batchDelete">
+        delete from views where id in
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

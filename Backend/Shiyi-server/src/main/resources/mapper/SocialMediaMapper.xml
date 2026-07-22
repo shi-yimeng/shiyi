@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cc.shiyi.mapper.SocialMediaMapper">
+    <update id="updateById">
+        update social_media
+        <set>
+            <if test="name != null">
+                name = #{name},
+            </if>
+            <if test="icon != null">
+                icon = #{icon},
+            </if>
+            <if test="link != null">
+                link = #{link},
+            </if>
+            <if test="sort != null">
+                sort = #{sort},
+            </if>
+            <if test="isVisible != null">
+                is_visible = #{isVisible},
+            </if>
+            <if test="updateTime != null">
+                update_time = #{updateTime}
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+    
+    <delete id="batchDelete">
+        delete from social_media where id in
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

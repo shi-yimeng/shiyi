@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: shiyi-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-your_root_password}
+      MYSQL_DATABASE: Shiyi
+      MYSQL_USER: shiyi
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-your_password}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d  # 初始化SQL脚本
+    ports:
+      - "3306:3306"
+    networks:
+      - shiyi-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: shiyi-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - shiyi-network
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 后端Java应用
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shiyi-backend
+    restart: always
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      TZ: Asia/Shanghai
+      # 数据库配置
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: Shiyi
+      MYSQL_USER: shiyi
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-your_password}
+      # Redis配置
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DATABASE: 0
+      # JWT配置
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-jwt-secret-key-change-in-production}
+      JWT_TTL: ${JWT_TTL:-86400000}
+      # 阿里云OSS配置
+      ALIOSS_ENDPOINT: ${ALIOSS_ENDPOINT}
+      ALIOSS_ACCESS_KEY_ID: ${ALIOSS_ACCESS_KEY_ID}
+      ALIOSS_ACCESS_KEY_SECRET: ${ALIOSS_ACCESS_KEY_SECRET}
+      ALIOSS_BUCKET_NAME: ${ALIOSS_BUCKET_NAME}
+      # 邮件配置
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      EMAIL_PERSONAL: ${EMAIL_PERSONAL}
+      EMAIL_FROM: ${EMAIL_FROM}
+      # 访客验证码
+      VISITOR_VERIFY_CODE: ${VISITOR_VERIFY_CODE}
+      # 网站配置
+      WEBSITE_TITLE: ${WEBSITE_TITLE}
+      WEBSITE_HOME: ${WEBSITE_HOME}
+      WEBSITE_ADMIN: ${WEBSITE_ADMIN}
+      WEBSITE_CV: ${WEBSITE_CV}
+      WEBSITE_BLOG: ${WEBSITE_BLOG}
+    ports:
+      - "5922:5922"
+    networks:
+      - shiyi-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./docker/app/logs:/app/logs
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: shiyi-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - shiyi-network
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/nginx/sites-enabled:/etc/nginx/sites-enabled:ro
+      - ./docker/html:/var/www:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mysql_data:
+  redis_data:
+  nginx_logs:
+
+networks:
+  shiyi-network:
+    driver: bridge

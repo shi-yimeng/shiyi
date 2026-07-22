@@ -1,0 +1,114 @@
+server:
+  port: 5922
+
+spring:
+  application:
+    name: ShiyiBlogBackend
+  profiles:
+    active: dev
+  threads:
+    virtual:
+      enabled: true
+  main:
+    allow-circular-references: true
+  servlet:
+    multipart:
+      max-file-size: 30MB
+      max-request-size: 50MB
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: ${shiyi.datasource.driver-class-name}
+    url: jdbc:mysql://${shiyi.datasource.host}:${shiyi.datasource.port}/${shiyi.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${shiyi.datasource.username}
+    password: ${shiyi.datasource.password}
+    druid:
+      # 个人博客推荐配置：减少连接数+关监控，直接省150-200MB内存
+      initial-size: 2
+      min-idle: 2
+      max-active: 10
+      max-wait: 60000
+      # ========= 生产强烈建议关闭监控面板 =========
+      # 如需本地开发查看SQL监控，在application-dev.yml单独开启
+      stat-view-servlet:
+        enabled: false
+      web-stat-filter:
+        enabled: false
+      filter:
+        stat:
+          enabled: false
+        wall:
+          enabled: false
+  data:
+    redis:
+      host: ${shiyi.redis.host}
+      port: ${shiyi.redis.port}
+      password: ${shiyi.redis.password}
+      database: ${shiyi.redis.database}
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 
+    password: 
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 3000
+          writetimeout: 5000
+
+# ========= API文档：生产环境强制关闭（省150MB+类元数据）=========
+# 本地开发如需Knife4j调试，在application-dev.yml单独打开 enabled=true
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+knife4j:
+  enable: false
+  production: true
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: cc.shiyi.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    cc:
+      shiyi:
+        mapper: debug
+        service: info
+        controller: info
+
+shiyi:
+  jwt:
+    # ⚠️ 生产务必通过环境变量 JWT_SECRET 覆盖，不要硬编码到Git
+    secret-key: ${JWT_SECRET:shiyi-blog-jwt-secret-key-2026-abcdefg123456}
+    ttl: ${shiyi.jwt.ttl}
+    token-name: Authorization
+  alioss:
+    endpoint: 
+    access-key-id: 
+    access-key-secret: 
+    bucket-name: 
+  email:
+    personal: 
+    from: 
+  visitor:
+    verify-code: 1234
+  image:
+    compress:
+      enabled: true
+      max-size-kb: 500
+      quality: 0.9
+      output-format: webp
+  website:
+    title: 师忆·Shiyi
+    home: https://zhaoxinyi.fun
+    admin: https://admin.zhaoxinyi.fun
+    cv: https://cv.zhaoxinyi.fun
+    blog: https://blog.zhaoxinyi.fun

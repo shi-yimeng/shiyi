@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cc.shiyi.mapper.ArticleCategoryMapper">
+
+    <insert id="insert">
+        insert into article_categories (name, slug, description, sort, create_time, update_time)
+        values (#{name}, #{slug}, #{description}, #{sort}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="update">
+        update article_categories
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="slug != null">slug = #{slug},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="updateTime != null">update_time = #{updateTime}</if>
+        </set>
+        where id = #{id}
+    </update>
+    
+    <delete id="batchDelete">
+        delete from article_categories where id in
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

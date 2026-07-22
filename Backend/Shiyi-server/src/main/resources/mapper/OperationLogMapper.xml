@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cc.shiyi.mapper.OperationLogMapper">
+    <insert id="save">
+        insert into operation_logs (admin_id, operation_type, operation_target, target_id, operate_data, result, error_message, operation_time)
+        values (#{adminId}, #{operationType}, #{operationTarget}, #{targetId}, #{operateData}, #{result}, #{errorMessage}, #{operationTime})
+    </insert>
+
+    <select id="pageQuery" resultType="cc.shiyi.entity.OperationLogs">
+        select * from operation_logs
+        <where>
+            <if test="adminId != null">
+                and admin_id = #{adminId}
+            </if>
+            <if test="operationType != null and operationType != ''">
+                and operation_type = #{operationType}
+            </if>
+            <if test="operationTarget != null and operationTarget != ''">
+                and operation_target like concat('%', #{operationTarget}, '%')
+            </if>
+            <if test="startTime != null">
+                and operation_time &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and operation_time &lt;= #{endTime}
+            </if>
+        </where>
+        order by operation_time desc
+    </select>
+
+    <delete id="batchDelete">
+        delete from operation_logs where id in
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

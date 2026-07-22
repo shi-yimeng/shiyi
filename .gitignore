@@ -1,0 +1,62 @@
+# ========== IDE/Editor ==========
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+nbproject/
+.project
+.classpath
+.settings/
+.DS_Store
+Thumbs.db
+
+# ========== Java/Maven 构建产物 ==========
+**/target/
+build/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ========== 日志 ==========
+*.log
+logs/
+hs_err_pid*
+
+# ========== Node/前端 构建产物/依赖 ==========
+**/node_modules/
+**/dist/
+**/dist-ssr/
+*.local
+.output
+coverage/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# ========== 敏感配置（关键！别泄漏真实密码）==========
+# 忽略本地实际使用的带密码yml（从模板复制后改名的）
+**/application-dev.yml
+**/application-prod.yml
+**/application-local.yml
+.env
+.env.*
+*.p12
+*.jks
+*.keystore
+
+# ========== 以下文件 **必须** 提交（模板/基础配置/构建说明，clone下来立刻能用） ==========
+!**/application.yml
+!**/application.yml.template
+!**/application-dev.yml.template
+!**/application-prod.yml.template
+!Backend/Shiyi-server/src/main/resources/application-docker.yml
+!/Dockerfile
+!/docker-compose.yml
+CLAUDE.md

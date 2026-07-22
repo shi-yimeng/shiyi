@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cc.shiyi.mapper.ArticleTagMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into article_tags (name, slug, create_time, update_time)
+        values (#{name}, #{slug}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="update">
+        update article_tags
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="slug != null">slug = #{slug},</if>
+            <if test="updateTime != null">update_time = #{updateTime}</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="batchDelete">
+        delete from article_tags where id in
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="getTagsByArticleId" resultType="cc.shiyi.entity.ArticleTags">
+        select t.* from article_tags t
+        inner join article_tag_relations atr on t.id = atr.tag_id
+        where atr.article_id = #{articleId}
+        order by t.id
+    </select>
+
+    <insert id="batchInsertRelations">
+        insert into article_tag_relations (article_id, tag_id) values
+        <foreach collection="tagIds" item="tagId" separator=",">
+            (#{articleId}, #{tagId})
+        </foreach>
+    </insert>
+
+    <delete id="batchDeleteRelationsByArticleIds">
+        delete from article_tag_relations where article_id in
+        <foreach collection="list" item="articleId" open="(" separator="," close=")">
+            #{articleId}
+        </foreach>
+    </delete>
+
+    <select id="getVisibleTags" resultType="cc.shiyi.entity.ArticleTags">
+        select t.*, count(a.id) as article_count from article_tags t
+        left join article_tag_relations atr on t.id = atr.tag_id
+        left join articles a on atr.article_id = a.id and a.is_published = 1
+        group by t.id
+        order by t.id
+    </select>
+
+</mapper>
